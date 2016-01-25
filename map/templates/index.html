@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<script type="text/javascript">
+	//var name = "{{ name }}";
+	//alert(name);
+</script>
+
+  <head>
+    <style type="text/css">
+      html, body { height: 100%; margin: 0; padding: 0; }
+      #map { height: 100%; }
+    </style>
+  </head>
+  <body>
+  	<style>
+	#slider label {
+	    position: absolute;
+	    width: 20px;
+	    margin-left: -10px;
+	    text-align: center;
+	    margin-top: 20px;
+	}
+
+	/* below is not necessary, just for style */
+	#slider {
+	    position: absolute;
+	    top: 95%;
+	    left: 25%;
+	    width: 50%;
+	}
+  	</style>
+	<div id="map" class="map"></div>
+	<div id="slider"></div>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCfG2ilnIE21Sml9n0VRaBKhlvpnTRkGkw"></script>
+	<link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+	<script src="//code.jquery.com/jquery-1.10.2.js"></script>
+	<script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+    <script type="text/javascript">
+    var json = {{ lam_stations|safe }};
+    var no_lams = json.length;
+
+    // create the mpa
+	function initMap() {
+		var map = new google.maps.Map(document.getElementById('map'), {
+			zoom: 13,
+			center: {lat: 60.173857, lng: 24.940982},
+		});
+
+		// create a dictionary where lamids are keys
+		lams = [];
+
+		for (var i=0;i<no_lams;i++) {
+			lam_data = json[i];
+
+			var lam = new google.maps.Circle({
+			  strokeColor: '#FF0000',
+			  strokeOpacity: 0.8,
+			  strokeWeight: 2,
+			  fillColor: '#30E530',
+			  fillOpacity: 0.35,
+			  map: map,
+			  center: {lat: lam_data["fields"]["lat"], lng: lam_data["fields"]["lng"]},
+			  radius: 200
+			});
+
+			lams.push(lam);
+		}
+
+		return lams;
+	}
+	
+	var lams = initMap();
+
+	var d = new Date();
+	var n = d.getTimezoneOffset();
+	var now = d.getTime();
+	var min = 1000*60;
+
+	// set up the slider and specify the slide event
+	$("#slider").slider({
+	    value: now,
+	    min: now - 60*min,
+	    max: now + 60*min,
+	    step: 10*min,
+	    create: function( event, ui ) {
+	    	slider_create_post(now);
+	    },
+	    slide: function( event, ui ) {
+        	slider_create_post(ui.value);
+      	}
+	}) 
+	.each(function() {
+		// add a range of values close to the slider
+
+		// get the options for this slider
+		var opt = $(this).data().uiSlider.options;
+
+		// compute number of steps
+		var vals = (opt.max - opt.min)/opt.step;
+
+		// space out values
+		for (var i=0;i<=vals;i++) {
+			var moment = new Date(opt.min+i*opt.step);
+			var hour = ('0'+moment.getHours()).slice(-2);
+			var min = ('0'+moment.getMinutes()).slice(-2);
+
+			var el = $('<label>'+hour+":"+min+'</label>').css('left',(i/vals*100-2.5)+'%');
+			$( "#slider" ).append(el);
+		}
+	  
+	});
+
+	function get_type(slider_val) {
+		if (slider_val>now) {
+			return "fcast";
+		} else {
+			return "obs";
+		}
+	}
+
+	function slider_create_post(slider_val) {
+		$.ajax({
+		    url : "update_map/", // the endpoint
+		    type : "POST", // http method
+		    data : {  // data sent with the post request
+		    	csrfmiddlewaretoken: '{{csrf_token}}',
+		    	timestamp: slider_val+n,
+		    	type: get_type(slider_val)
+		    }, 
+		    // handle a successful response
+		    success : function(json) {
+		    	var count = Object.keys(json).length
+
+		    	for (var i=0;i<count;i++) {
+		    		lams[i].setOptions({fillColor:json[i]});
+		    	}
+		    }
+		});
+	};
+
+
+
+    </script>
+  </body>
+</html>
+
+
