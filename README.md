@@ -19,5 +19,5 @@ Multi-output Gaussian process regression seems to model the data relatively well
 ![Example](example.png?raw=true "Example")
 If the figure is not rendered, see example.png or run example_2d.py.
 
-# TODO
+# Todo
 Optimize user's route back home using current traffic information and predictions of possible traffic jams. 
